@@ -1,0 +1,48 @@
+name: Build whisper.cpp - Ryzen 3200G + GTX 1660 SUPER
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    container:
+      image: nvidia/cuda:12.4.1-devel-ubuntu22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            git \
+            pkg-config
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGGML_CUDA=ON \
+            -DCMAKE_CUDA_ARCHITECTURES=75 \
+            -DGGML_NATIVE=OFF \
+            -DCMAKE_C_FLAGS_RELEASE="-O3 -DNDEBUG -march=znver1 -mtune=znver1" \
+            -DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG -march=znver1 -mtune=znver1"
+
+      - name: Compile
+        run: |
+          cmake --build build --parallel $(nproc)
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-cpp-ryzen3200g-gtx1660super-linux
+          path: build/bin/
+          if-no-files-found: error
